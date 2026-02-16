@@ -113,52 +113,68 @@ For each, briefly explain what changed and flag anything noteworthy.
   there efficiently, but never at the cost of thoroughness.
 ```
 
-### Claude Code Custom Skill (CLAUDE.md)
+### Claude Code Custom Command
 
-If you use this approach regularly, you can encode it as a custom instruction in your project's `CLAUDE.md` file. This ensures Claude Code defaults to this review style whenever you ask for a review.
+You can also save this as a custom slash command so you can invoke it with `/vertical-review main` (or whatever your target branch is) directly in Claude Code.
+
+Save the following as `.claude/commands/vertical-review.md` in your project:
 
 ```markdown
-# Code Review Protocol
+Review the current branch against `$ARGUMENTS` using a vertical slice approach.
 
-When asked to review code, a PR, or a changeset, always use the vertical slice
-review method unless explicitly told otherwise.
+## Step 1: Identify Changes
 
-## Method
+Run `git diff $ARGUMENTS...HEAD --name-only` to get the list of changed files.
+This is the changeset for the review.
 
-1. **Orientation first.** Summarise intent, architecture, and identify all distinct
-   vertical slices (user actions / code paths). Order them: main flows first, then
-   edge cases, then error paths.
+## Step 2: Orientation
 
-2. **Walk through each slice top-down through architectural layers:**
-   - HTTP / Resource layer (routes, controllers, DTOs, validation, auth)
-   - Business / Service layer (orchestration, domain logic, side effects)
-   - Persistence layer (repositories, queries, transactions, schema changes)
-   - Tests (relevant test changes for this slice)
+Provide:
+- A one-paragraph summary of what this changeset does and why
+- An architectural overview of the approach
+- A numbered list of distinct vertical slices (user actions / code paths),
+  ordered by importance: main flows first, then edge cases, then error paths
+- Any files that don't belong to a clear vertical slice (config, CI, migrations,
+  shared utilities) — these go in the residual sweep
 
-3. **At each layer, for each slice:**
-   - Show relevant code changes only
-   - Explain the approach and reasoning
-   - Flag: bugs, security issues, performance risks, missing edge cases,
-     convention violations
-   - Highlight: good patterns, interesting decisions
-   - Disclose: what you cannot verify (concurrency, runtime perf, integration
-     behaviour)
+## Step 3: Vertical Walkthrough
 
-4. **After all slices: residual sweep.** Cover config, CI, dependencies, shared
-   utilities, and anything not part of a clear vertical.
+For each slice, walk through it layer by layer, top-down:
+- HTTP / Resource layer (routes, controllers, DTOs, validation, auth)
+- Business / Service layer (orchestration, domain logic, side effects)
+- Persistence layer (repositories, queries, transactions, schema changes)
+- Tests (relevant test changes for this slice)
 
-5. **Completeness rule.** Every changed file must appear in at least one slice or
-   in the residual. Never silently skip a file.
+At each layer:
+1. Show the relevant code changes (only what belongs to this slice)
+2. Explain the approach — what does this code do and why
+3. Flag issues with severity: critical / warning / nit
+4. Highlight good patterns and interesting decisions
+5. Disclose what you cannot verify (concurrency, runtime perf, integration
+   behaviour)
 
-6. **Pacing.** Pause after each layer. Wait for confirmation before continuing.
-   The reviewer may ask questions, request deeper analysis, or skip ahead.
+**Pause after each layer.** Wait for the reviewer to confirm, ask questions,
+request deeper analysis, or skip ahead.
 
-## Tone
+## Step 4: Residual Sweep
 
-Be direct. Flag issues clearly with severity (critical / warning / nit). Explain
-reasoning concisely. Acknowledge good work. Be explicit about the limits of static
-analysis.
+After all slices, cover everything that remains:
+- Configuration changes
+- CI/CD changes
+- Dependency updates
+- Shared utility modifications
+- Anything else not covered
+
+## Rules
+
+- Every changed file must appear in at least one slice or in the residual.
+  Never silently skip a file.
+- If a file is relevant to multiple slices, show the relevant portion in each.
+- Be direct. Explain reasoning concisely. Acknowledge good work.
+- Be explicit about the limits of static analysis.
 ```
+
+Usage is straightforward — check out your feature branch, open Claude Code, and type `/vertical-review main`. The `$ARGUMENTS` placeholder gets replaced with whatever you pass after the command name.
 
 ## When This Works Best
 
